@@ -4,6 +4,7 @@
 *.vscode*
 *.pyc
 *.db*
+ambiente
 Desafio_Tecnico_AppSec - DEVOPS.pdf
 PLANO_DESAFIO_APPSEC_SRE_0.md
 .DS_Store
