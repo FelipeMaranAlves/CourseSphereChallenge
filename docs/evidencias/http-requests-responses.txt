@@ -1,0 +1,115 @@
+================================================================================
+EVIDÊNCIAS DE INSPEÇÃO HTTP (REQUESTS & RESPONSES) - COURSESPHERE BACKEND
+Data da Execução: 2026-10-28
+Alvo: Aplicação local Flask (http://127.0.0.1:5000) - Estado Baseline (Pré-correção)
+================================================================================
+
+--------------------------------------------------------------------------------
+EVIDÊNCIA HTTP 01: Quebra de Autenticação na Rota /users/query (OWASP A01 / A07)
+Arquivo: backend/endpoints.py (linhas 65-72) & backend/firebase.py (linhas 58-62)
+Descrição: A rota /users/query processa consultas ao QueryManager mesmo quando
+nenhum token de autenticação é enviado (retornando HTTP 200 OK).
+--------------------------------------------------------------------------------
+[REQUEST]
+POST /users/query HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+
+{"query": "CS 2110"}
+
+[RESPONSE]
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 22
+Access-Control-Allow-Origin: *
+
+"Fake implementation"
+
+
+--------------------------------------------------------------------------------
+EVIDÊNCIA HTTP 02: Token JWT na URL (Query String) e Vazamento de Exceção Interna
+(OWASP A02 / A04 / A05 - Information Disclosure)
+Arquivo: backend/endpoints.py (linhas 55-63) & frontend/src/api.ts (linha 91)
+Descrição: O token JWT é transmitido via query parameter (?id_token=...), ficando
+exposto em logs HTTP. Além disso, o bloco except retorna str(e) diretamente ao
+cliente, expondo detalhes internos da biblioteca firebase_admin.
+--------------------------------------------------------------------------------
+[REQUEST]
+GET /users/info?id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.invalid HTTP/1.1
+Host: 127.0.0.1:5000
+
+[RESPONSE]
+HTTP/1.1 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 146
+Access-Control-Allow-Origin: *
+
+{"error":"Error getting user info: Error verifying ID token: Wrong number of segments in token: b'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.invalid'"}
+
+
+--------------------------------------------------------------------------------
+EVIDÊNCIA HTTP 03: CORS Irrestrito e Ausência de Security Headers (OWASP A05)
+Arquivo: backend/endpoints.py (linha 8: CORS(app))
+Descrição: Qualquer origem externa (Origin) é aceita e refletida no cabeçalho
+Access-Control-Allow-Origin. Também se observa a ausência completa de headers de
+segurança (X-Content-Type-Options, X-Frame-Options, Content-Security-Policy, HSTS).
+--------------------------------------------------------------------------------
+[REQUEST]
+OPTIONS /users/create HTTP/1.1
+Host: 127.0.0.1:5000
+Origin: https://external-origin.example
+Access-Control-Request-Method: POST
+
+[RESPONSE]
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Allow: POST, OPTIONS
+Access-Control-Allow-Origin: https://external-origin.example
+Access-Control-Allow-Methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+Vary: Origin
+Content-Length: 0
+
+
+--------------------------------------------------------------------------------
+EVIDÊNCIA HTTP 04: Uso de assert para Validação de Entrada (OWASP A04 / CWE-703)
+Arquivo: backend/query_manager.py (linha 44: assert (query is not None))
+Descrição: Quando o campo "query" é enviado como null, o servidor dispara um
+AssertionError interno em vez de realizar validação estruturada de entrada.
+--------------------------------------------------------------------------------
+[REQUEST]
+POST /users/query HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+
+{"query": null}
+
+[RESPONSE]
+HTTP/1.1 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 45
+Access-Control-Allow-Origin: *
+
+{"error":"Error getting generating query: "}
+
+
+--------------------------------------------------------------------------------
+EVIDÊNCIA HTTP 05: Vazamento de Erro Interno de Python na Rota /hash (OWASP A05)
+Arquivo: backend/endpoints.py (linhas 74-83)
+Descrição: A ausência de validação do header Authorization faz request.headers.get('Authorization').split(...)
+lançar AttributeError e expor a mensagem interna da exceção Python com status 500.
+--------------------------------------------------------------------------------
+[REQUEST]
+POST /hash HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+
+{"data": "test"}
+
+[RESPONSE]
+HTTP/1.1 500 INTERNAL SERVER ERROR
+Content-Type: application/json
+Content-Length: 55
+Access-Control-Allow-Origin: *
+
+{"error":"'NoneType' object has no attribute 'split'"}
+
