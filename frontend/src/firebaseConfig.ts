@@ -1,16 +1,9 @@
 export default {
-
-  apiKey: "AIzaSyBvfMesxJwgHj5Sb8ku7QBdpMHVhOTesJI",
-
-  authDomain: "coursesphere-d14d8.firebaseapp.com",
-
-  databaseURL: "https://coursesphere-d14d8-default-rtdb.firebaseio.com",
-
-  projectId: "coursesphere-d14d8",
-
-  storageBucket: "coursesphere-d14d8.firebasestorage.app",
-
-  messagingSenderId: "339007659630",
-
-  appId: "1:339007659630:web:8dba0ae44690a84d69107f"
-}
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "your-project.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://your-project-default-rtdb.firebaseio.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "your-project",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "your-project.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:000000000000"
+};

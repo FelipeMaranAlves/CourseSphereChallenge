@@ -1,5 +1,8 @@
 *config.json
 *credentials.json
+.env
+.env.*
+!.env.example
 *.idea*
 *.vscode*
 *.pyc
