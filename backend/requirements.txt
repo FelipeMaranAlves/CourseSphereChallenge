@@ -3,5 +3,8 @@ flask
 flask-cors
 openai
 pandas
+numpy
+gunicorn
 bandit
 pip-audit
+pytest

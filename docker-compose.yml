@@ -1,0 +1,86 @@
+services:
+  backend-1:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coursesphere-backend-1
+    hostname: backend-1
+    environment:
+      - INSTANCE_ID=backend-1
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FLASK_DEBUG=false
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - FIREBASE_DATABASE_URL=${FIREBASE_DATABASE_URL:-https://coursesphere-d14d8-default-rtdb.firebaseio.com/}
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - coursesphere-net
+
+  backend-2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coursesphere-backend-2
+    hostname: backend-2
+    environment:
+      - INSTANCE_ID=backend-2
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FLASK_DEBUG=false
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - FIREBASE_DATABASE_URL=${FIREBASE_DATABASE_URL:-https://coursesphere-d14d8-default-rtdb.firebaseio.com/}
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - coursesphere-net
+
+  nginx-lb:
+    image: nginx:1.27-alpine
+    container_name: coursesphere-nginx-lb
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - coursesphere-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coursesphere-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - nginx-lb
+    restart: unless-stopped
+    networks:
+      - coursesphere-net
+
+networks:
+  coursesphere-net:
+    driver: bridge
+
