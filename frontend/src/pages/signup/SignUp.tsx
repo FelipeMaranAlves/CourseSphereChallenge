@@ -41,7 +41,7 @@ const SignUpBox = () => {
         onChange = {(e) => setEmail(e.target.value)}
       />
       <br/>
-      <TextField id="signup-password-input" label="Password" variant="filled"
+      <TextField id="signup-password-input" label="Password" type="password" variant="filled"
         onChange = {(e) => setPassword(e.target.value)}
       />
       <br/>

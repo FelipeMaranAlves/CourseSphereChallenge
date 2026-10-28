@@ -1,9 +1,29 @@
 # firebase.py
+import json
+import os
 import firebase_admin
 from firebase_admin import credentials, auth, db
-firebase_credentials = credentials.Certificate("./credentials.json")
-database_url = "https://coursesphere-d14d8-default-rtdb.firebaseio.com/"
-firebase_admin.initialize_app(firebase_credentials, {"databaseURL": database_url})
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+database_url = os.getenv(
+    "FIREBASE_DATABASE_URL",
+    "https://coursesphere-d14d8-default-rtdb.firebaseio.com/",
+)
+
+if not firebase_admin._apps:
+    creds_json_env = os.getenv("FIREBASE_CREDENTIALS_JSON")
+    creds_path = os.getenv(
+        "FIREBASE_CREDENTIALS_PATH", os.path.join(BASE_DIR, "credentials.json")
+    )
+    if creds_json_env:
+        firebase_credentials = credentials.Certificate(json.loads(creds_json_env))
+        firebase_admin.initialize_app(firebase_credentials, {"databaseURL": database_url})
+    elif os.path.exists(creds_path):
+        firebase_credentials = credentials.Certificate(creds_path)
+        firebase_admin.initialize_app(firebase_credentials, {"databaseURL": database_url})
+    else:
+        firebase_admin.initialize_app(options={"databaseURL": database_url})
+
 firebase_app = firebase_admin.get_app()
 
 class Firebase:

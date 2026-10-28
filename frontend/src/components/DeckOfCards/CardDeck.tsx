@@ -28,7 +28,10 @@ const CardDeck: React.FC<CardDeckProps> = ({ cards }) => {
     setFlipped(!flipped);
   };
 
-  const currentCard = cards[currentIndex];
+  const currentCard = cards.at(currentIndex);
+  if (!currentCard) {
+    return null;
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
