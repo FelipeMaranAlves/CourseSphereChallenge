@@ -25,6 +25,7 @@ Esta pasta reúne todas as evidências coletadas durante a fase de **Análise de
 | [`prints/03-burp-cors-missing-headers.png`](./prints/03-burp-cors-missing-headers.png) | `OPTIONS /users/create` | **Configuração Incorreta de CORS & Ausência de Security Headers (OWASP A05):** Reflexão de origem arbitrária em `Access-Control-Allow-Origin` e falta de `CSP`, `HSTS`, `X-Frame-Options` e `X-Content-Type-Options`. |
 | [`prints/04-burp-assert-validation.png`](./prints/04-burp-assert-validation.png) | `POST /users/query` | **Uso Inseguro de `assert` para Validação (OWASP A04 / CWE-703):** Envio de `{"query": null}` dispara `AssertionError`. |
 | [`prints/05-burp-werkzeug-debug-trace.png`](./prints/05-burp-werkzeug-debug-trace.png) | `POST /users/create` ou `POST /hash` | **Flask `debug=True` & Vazamento de Stack Trace / Exceção (OWASP A05 / CWE-94):** Exposição do debugger interativo do Werkzeug e erros internos do Python (`AttributeError`). |
+| [`prints/06-docker-nginx-load-balancer.png`](./prints/06-docker-nginx-load-balancer.png) | `GET /health` via Nginx LB (`:5000`) | **Infraestrutura & Escalabilidade (Requisito 5):** Demonstração de balanceamento *round-robin* entre `backend-1` e `backend-2` e logs do `coursesphere-nginx-lb`. |
 
 ---
 
@@ -64,3 +65,14 @@ Esta pasta reúne todas as evidências coletadas durante a fase de **Análise de
 
 ### VULN-07: Object Injection Sink e Exposição Visual de Senha no Frontend (OWASP A03:2021 / A04:2021)
 - **Evidência SAST:** [`eslint-security.txt`](./eslint-security.txt) (Linha 36 — `security/detect-object-injection` em `CardDeck.tsx:31`) e inspeção de código em `frontend/src/pages/signup/SignUp.tsx:44` (ausência de `type="password"`).
+
+---
+
+## 4. Evidência de Escalabilidade e Balanceamento de Carga (SRE / Infraestrutura)
+
+### Requisito 5: Orquestração `docker-compose` + Balanceador Nginx (`backend-1` e `backend-2`)
+- **Print de Execução e Logs do Nginx:** [`prints/06-docker-nginx-load-balancer.png`](./prints/06-docker-nginx-load-balancer.png)
+- **Descrição:** Comprova a distribuição *round-robin* de 6 requisições consecutivas no endpoint `/health` alternando entre `instance_id: "backend-1"` e `instance_id: "backend-2"`, acompanhada dos logs de acesso do container `coursesphere-nginx-lb`.
+
+![06 - Balanceamento de Carga Nginx entre backend-1 e backend-2](./prints/06-docker-nginx-load-balancer.png)
+
