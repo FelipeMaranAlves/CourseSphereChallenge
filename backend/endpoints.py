@@ -6,8 +6,17 @@ from query_manager import QueryManager
 from firebase import Firebase
 from main import hashFunction
 from blueprints.courses import courses_bp
+from security import (
+    apply_security_headers,
+    rate_limit,
+    sanitize_string_list,
+    sanitize_text,
+    validate_email_and_password,
+    validate_safe_identifier,
+)
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # Limit request payload size to 64 KB
 
 allowed_origins = [
     origin.strip()
@@ -23,6 +32,11 @@ app.register_blueprint(courses_bp)
 
 success_response = lambda data, code: (jsonify(data), code)
 error_response = lambda error, code: (jsonify({'error': error}), code)
+
+
+@app.after_request
+def set_security_headers(response):
+    return apply_security_headers(response)
 
 
 def extract_bearer_token():
@@ -53,16 +67,16 @@ def require_auth(f):
 
 
 @app.route("/users/create", methods=["POST"])
+@rate_limit(limit=5, window_seconds=60)
 def create_user():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return error_response("Invalid JSON payload", 400)
-    email = data.get("email")
-    password = data.get("password")
-    if not email:
-        return error_response("Email is required", 400)
-    if not password:
-        return error_response("Password is required", 400)
+    email, password, validation_err = validate_email_and_password(
+        data.get("email"), data.get("password")
+    )
+    if validation_err:
+        return error_response(validation_err, 400)
     try:
         return success_response(Firebase.create_user(email, password), 200)
     except Exception as e:
@@ -71,6 +85,7 @@ def create_user():
 
 
 @app.route("/users/info", methods=["POST"])
+@rate_limit(limit=20, window_seconds=60)
 @require_auth
 def set_user_info(uid):
     data = request.get_json(silent=True)
@@ -78,13 +93,17 @@ def set_user_info(uid):
         return error_response("Invalid JSON payload", 400)
     try:
         user_info = {
-            "majors": data.get("majors"),
-            "minors": data.get("minors"),
-            "courses": data.get("courses"),
-            "college": data.get("college"),
-            "year": data.get("year"),
-            "about": data.get("about"),
+            "majors": sanitize_string_list(data.get("majors")),
+            "minors": sanitize_string_list(data.get("minors")),
+            "courses": sanitize_string_list(data.get("courses"), max_items=50),
+            "college": sanitize_text(data.get("college"), max_length=100),
+            "year": sanitize_text(data.get("year"), max_length=50),
+            "about": sanitize_text(data.get("about"), max_length=500),
         }
+    except ValueError as val_err:
+        return error_response(f"Invalid input: {val_err}", 400)
+
+    try:
         Firebase.set_user_info(uid, user_info)
         return success_response({"message": "User info set successfully", "uid": uid}, 200)
     except Exception as e:
@@ -93,6 +112,7 @@ def set_user_info(uid):
 
 
 @app.route("/users/info", methods=["GET"])
+@rate_limit(limit=30, window_seconds=60)
 @require_auth
 def get_user_info(uid):
     try:
@@ -104,23 +124,30 @@ def get_user_info(uid):
 
 
 @app.route("/users/query", methods=["POST"])
+@rate_limit(limit=15, window_seconds=60)
 @require_auth
 def get_user_query(uid):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return error_response("Invalid JSON payload", 400)
-    query = data.get("query")
-    if not isinstance(query, str) or not query.strip():
+    raw_query = data.get("query")
+    if not isinstance(raw_query, str) or not raw_query.strip():
         return error_response("Query is required and must be a non-empty string", 400)
     try:
+        clean_query = sanitize_text(raw_query, max_length=500)
+    except ValueError as val_err:
+        return error_response(str(val_err), 400)
+
+    try:
         user_info = Firebase.get_user_info(uid)
-        return success_response(QueryManager(query.strip(), user_info).response, 200)
+        return success_response(QueryManager(clean_query, user_info).response, 200)
     except Exception as e:
         app.logger.error("Error generating query response for uid %s: %s", uid, e)
         return error_response("Error generating query response", 400)
 
 
 @app.route('/hash', methods=['POST'])
+@rate_limit(limit=30, window_seconds=60)
 @require_auth
 def generate_message_id(uid):
     try:
@@ -135,13 +162,18 @@ def generate_message_id(uid):
 
 
 @app.route("/chats/<chat_id>/messages", methods=["POST"])
+@rate_limit(limit=30, window_seconds=60)
 @require_auth
 def save_chat(uid, chat_id):
+    if not validate_safe_identifier(chat_id):
+        return error_response("Invalid chat_id format", 400)
     try:
         data = request.get_json(silent=True)
         if not isinstance(data, dict):
             return error_response("Invalid JSON payload", 400)
         messages = data.get('messages', [])
+        if not isinstance(messages, list) or len(messages) > 50:
+            return error_response("Messages must be a list of at most 50 items", 400)
         Firebase.save_chat(uid, chat_id, messages)
         return jsonify({'message': 'Messages saved successfully'}), 200
     except Exception as e:
@@ -150,8 +182,11 @@ def save_chat(uid, chat_id):
 
 
 @app.route("/chats/<chat_id>", methods=["DELETE"])
+@rate_limit(limit=20, window_seconds=60)
 @require_auth
 def delete_chat(uid, chat_id):
+    if not validate_safe_identifier(chat_id):
+        return error_response("Invalid chat_id format", 400)
     try:
         Firebase.delete_chat(uid, chat_id)
         return success_response({'message': 'Message deleted successfully'}, 200)
