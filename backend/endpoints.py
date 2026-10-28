@@ -3,12 +3,12 @@ from flask_cors import CORS
 from query_manager import QueryManager
 from firebase import Firebase
 from main import hashFunction
+from blueprints.courses import courses_bp
 
 app = Flask(__name__)
 CORS(app)
 
-# TODO: figure out the blueprint thing below
-#app.register_blueprint(courses_bp)
+app.register_blueprint(courses_bp)
 
 success_response = lambda data, code: (jsonify(data), code)
 error_response = lambda error, code: (jsonify({'error': error}), code)

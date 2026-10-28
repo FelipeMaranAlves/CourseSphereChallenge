@@ -1,9 +1,14 @@
-from flask import Blueprint
+from flask import Blueprint, jsonify
 
-from backend.db import execute_query
-from backend.endpoints import error_response, success_response
+try:
+    from db import execute_query
+except ImportError:
+    from backend.db import execute_query
 
 courses_bp = Blueprint("courses", __name__)
+
+success_response = lambda data, code: (jsonify(data), code)
+error_response = lambda error, code: (jsonify({"error": error}), code)
 
 
 # Add your routes and other blueprint-related code here
@@ -27,7 +32,7 @@ def get_course(course_id):
     :return: A JSON response with the course data and a 200 status code.
              If the course is not found, returns a 404 status code.
     """
-    course = execute_query(f"SELECT * FROM courses WHERE id = {course_id}").fetchall()
+    course = execute_query("SELECT * FROM courses WHERE id = ?", (course_id,))
     if course:
         return success_response(course, 200)
     else:
@@ -44,8 +49,8 @@ def get_course_description(course_id):
              If the course is not found, returns a 404 status code.
     """
     course = execute_query(
-        f"SELECT description FROM course_descriptions WHERE id = {course_id}"
-    ).fetchall()
+        "SELECT description FROM course_descriptions WHERE id = ?", (course_id,)
+    )
     if course:
         return success_response(course, 200)
     else:
@@ -61,13 +66,14 @@ def get_courses_by_section(section_id):
     :return: A JSON response with the list of courses and a 200 status code.
     """
     courses = execute_query(
-        f"SELECT * FROM courses WHERE section_id = {section_id}"
-    ).fetchall()
+        "SELECT * FROM courses WHERE section_id = ?", (section_id,)
+    )
     if not courses:
         return error_response("No courses found for this section", 404)
     return success_response(courses, 200)
 
 
+@courses_bp.route("/courses/semester/<string:semester>", methods=["GET"])
 @courses_bp.route("/courses/<string:semester>", methods=["GET"])
 def get_courses_by_semester(semester):
     """
@@ -77,14 +83,14 @@ def get_courses_by_semester(semester):
     :return: A JSON response with the list of courses and a 200 status code.
     """
     courses = execute_query(
-        f"SELECT * FROM courses WHERE semester = '{semester}'"
-    ).fetchall()
+        "SELECT * FROM courses WHERE semester = ?", (semester,)
+    )
     if not courses:
         return error_response("No courses found for this semester", 404)
     return success_response(courses, 200)
 
 
-@courses_bp.route("/courses/<string:department>", methods=["GET"])
+@courses_bp.route("/courses/department/<string:department>", methods=["GET"])
 def get_courses_by_department(department):
     """
     Retrieves a list of courses for a specific department from the database.
@@ -93,14 +99,14 @@ def get_courses_by_department(department):
     :return: A JSON response with the list of courses and a 200 status code.
     """
     courses = execute_query(
-        f"SELECT * FROM courses WHERE department = '{department}'"
-    ).fetchall()
+        "SELECT * FROM courses WHERE department = ?", (department,)
+    )
     if not courses:
         return error_response("No courses found for this department", 404)
     return success_response(courses, 200)
 
 
-@courses_bp.route("/courses/<string:instructor>", methods=["GET"])
+@courses_bp.route("/courses/instructor/<string:instructor>", methods=["GET"])
 def get_courses_by_instructor(instructor):
     """
     Retrieves a list of courses for a specific instructor from the database.
@@ -109,8 +115,8 @@ def get_courses_by_instructor(instructor):
     :return: A JSON response with the list of courses and a 200 status code.
     """
     courses = execute_query(
-        f"SELECT * FROM courses WHERE instructor = '{instructor}'"
-    ).fetchall()
+        "SELECT * FROM courses WHERE instructor = ?", (instructor,)
+    )
     if not courses:
         return error_response("No courses found for this instructor", 404)
     return success_response(courses, 200)
