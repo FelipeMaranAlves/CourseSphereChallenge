@@ -27,6 +27,7 @@ Esta pasta reúne todas as evidências coletadas durante a fase de **Análise de
 | [`prints/04-burp-assert-validation.png`](./prints/04-burp-assert-validation.png) | `POST /users/query` | **Uso Inseguro de `assert` para Validação (OWASP A04 / CWE-703):** Envio de `{"query": null}` dispara `AssertionError`. |
 | [`prints/05-burp-werkzeug-debug-trace.png`](./prints/05-burp-werkzeug-debug-trace.png) | `POST /users/create` ou `POST /hash` | **Flask `debug=True` & Vazamento de Stack Trace / Exceção (OWASP A05 / CWE-94):** Exposição do debugger interativo do Werkzeug e erros internos do Python (`AttributeError`). |
 | [`prints/06-docker-nginx-load-balancer.png`](./prints/06-docker-nginx-load-balancer.png) | `GET /health` via Nginx LB (`:5000`) | **Infraestrutura & Escalabilidade (Requisito 5):** Demonstração de balanceamento *round-robin* entre `backend-1` e `backend-2` e logs do `coursesphere-nginx-lb`. |
+| [`prints/07-prometheus-grafana-dashboard.png`](./prints/07-prometheus-grafana-dashboard.png) | `GET /metrics` via Prometheus (`:9090`) / Grafana (`:3001`) | **Observabilidade & SRE (Requisito 4 / Diferencial):** Dashboard funcional com métricas de tráfego por instância, latência p95, falhas de autenticação e uptime. |
 
 ---
 
@@ -76,4 +77,9 @@ Esta pasta reúne todas as evidências coletadas durante a fase de **Análise de
 - **Descrição:** Comprova a distribuição *round-robin* de 6 requisições consecutivas no endpoint `/health` alternando entre `instance_id: "backend-1"` e `instance_id: "backend-2"`, acompanhada dos logs de acesso do container `coursesphere-nginx-lb`.
 
 ![06 - Balanceamento de Carga Nginx entre backend-1 e backend-2](./prints/06-docker-nginx-load-balancer.png)
+
+### Requisito 4 (Diferencial): Dashboard Funcional de Observabilidade (Prometheus + Grafana)
+- **Print do Dashboard:** [`prints/07-prometheus-grafana-dashboard.png`](./prints/07-prometheus-grafana-dashboard.png)
+
+![07 - Dashboard de Observabilidade Prometheus e Grafana](./prints/07-prometheus-grafana-dashboard.png)
 

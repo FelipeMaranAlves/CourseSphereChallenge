@@ -286,6 +286,8 @@ Para visualização contínua em operação (baseada nos *Four Golden Signals* d
 4. **Painel 4 — Monitoramento de Segurança AppSec (Falhas de Autenticação e Rate Limit):**
    - Query: `sum(rate(auth_failures_total[5m])) by (reason)` e `sum(rate(http_requests_total{status="429"}[5m]))` — detecta ataques de força bruta, varredura de tokens inválidos ou abuso de API em tempo real.
 
+![Evidência 07 - Dashboard Funcional de Observabilidade](./docs/evidencias/prints/07-prometheus-grafana-dashboard.png)
+
 ### 6.5. Principais Riscos de Disponibilidade Identificados e Recomendações de Resiliência
 1. **Banco de Dados SQLite Local em Múltiplas Instâncias:**
    - *Risco:* O SQLite é um banco embarcado em arquivo local; em escritas concorrentes ou múltiplos containers sem volume compartilhado/SGBD externo, há risco de *database lock* ou divergência de estado.

@@ -47,6 +47,8 @@ docker compose up --build -d
 ### 3. Acessar os serviços
 * **Frontend Web:** `http://localhost:3000`
 * **API Backend (via Nginx Load Balancer):** `http://localhost:5000`
+* **Dashboard Grafana (Pré-provisionado):** `http://localhost:3001`
+* **Prometheus UI (Graph / Targets):** `http://localhost:9090`
 * **Endpoint de Saúde (`/health`):** `http://localhost:5000/health`
 * **Métricas Prometheus (`/metrics`):** `http://localhost:5000/metrics`
 * **Catálogo de Cursos (`/courses`):** `http://localhost:5000/courses`
