@@ -88,10 +88,11 @@ async function setProfileInfoIfLoggedIn(
     const idToken = await user?.getIdToken()
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000/users/info?id_token=${idToken}`, {
+      const response = await fetch("http://127.0.0.1:5000/users/info", {
         method: "GET",
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`
         }
       })
 
@@ -153,14 +154,14 @@ async function saveProfileChanges (majors: string[], minors: string[], courses: 
     year: year,
     college: college,
     courses: courses,
-    about: about,
-    id_token: idToken
+    about: about
   };
 
   fetch("http://127.0.0.1:5000/users/info", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${idToken}`
     },
     body: JSON.stringify(data)
   })
@@ -181,8 +182,8 @@ async function saveProfileChanges (majors: string[], minors: string[], courses: 
  */
 async function fetchCourseSphereResponse(query: string) {
   const user = auth.currentUser;
-  const idToken = user?.getIdToken();
-  const data = { query, idToken };
+  const idToken = await user?.getIdToken();
+  const data = { query };
   const response = await fetch("http://127.0.0.1:5000/users/query", {
     method: "POST",
     headers: {

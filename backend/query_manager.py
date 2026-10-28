@@ -41,7 +41,8 @@ class QueryManager:
         the response
         :param query: The query to be managed (im running out of ideas)
         """
-        assert (query is not None)
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("Query must be a non-empty string")
         
         self.query = query
         self.user_data = CourseSphereUser(user_data)
