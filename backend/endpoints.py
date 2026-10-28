@@ -1,3 +1,4 @@
+import os
 from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -7,7 +8,16 @@ from main import hashFunction
 from blueprints.courses import courses_bp
 
 app = Flask(__name__)
-CORS(app)
+
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
+CORS(app, resources={r"/*": {"origins": allowed_origins}})
 
 app.register_blueprint(courses_bp)
 
@@ -35,7 +45,8 @@ def require_auth(f):
             uid = decoded.get("uid") if isinstance(decoded, dict) else None
             if not uid:
                 return error_response("Invalid authentication token", 401)
-        except Exception:
+        except Exception as exc:
+            app.logger.warning("Token verification failed: %s", exc)
             return error_response("Invalid or expired authentication token", 401)
         return f(uid, *args, **kwargs)
     return decorated
@@ -55,7 +66,8 @@ def create_user():
     try:
         return success_response(Firebase.create_user(email, password), 200)
     except Exception as e:
-        return error_response(f"Error creating user: {str(e)}", 400)
+        app.logger.error("Error creating user: %s", e)
+        return error_response("Error creating user", 400)
 
 
 @app.route("/users/info", methods=["POST"])
@@ -76,7 +88,8 @@ def set_user_info(uid):
         Firebase.set_user_info(uid, user_info)
         return success_response({"message": "User info set successfully", "uid": uid}, 200)
     except Exception as e:
-        return error_response(f"Error with setting user info: {str(e)}", 400)
+        app.logger.error("Error setting user info for uid %s: %s", uid, e)
+        return error_response("Error setting user info", 400)
 
 
 @app.route("/users/info", methods=["GET"])
@@ -86,7 +99,8 @@ def get_user_info(uid):
         user_info = Firebase.get_user_info(uid)
         return success_response(user_info, 200)
     except Exception as e:
-        return error_response(f"Error getting user info: {str(e)}", 400)
+        app.logger.error("Error getting user info for uid %s: %s", uid, e)
+        return error_response("Error getting user info", 400)
 
 
 @app.route("/users/query", methods=["POST"])
@@ -102,7 +116,8 @@ def get_user_query(uid):
         user_info = Firebase.get_user_info(uid)
         return success_response(QueryManager(query.strip(), user_info).response, 200)
     except Exception as e:
-        return error_response(f"Error getting generating query: {str(e)}", 400)
+        app.logger.error("Error generating query response for uid %s: %s", uid, e)
+        return error_response("Error generating query response", 400)
 
 
 @app.route('/hash', methods=['POST'])
@@ -115,7 +130,8 @@ def generate_message_id(uid):
         message_id = hashFunction(data)
         return jsonify({'messageID': message_id}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error("Error generating hash for uid %s: %s", uid, e)
+        return error_response("Internal server error generating message ID", 500)
 
 
 @app.route("/chats/<chat_id>/messages", methods=["POST"])
@@ -129,7 +145,8 @@ def save_chat(uid, chat_id):
         Firebase.save_chat(uid, chat_id, messages)
         return jsonify({'message': 'Messages saved successfully'}), 200
     except Exception as e:
-        return jsonify({'error': f"Error saving messages: {str(e)}"}), 400
+        app.logger.error("Error saving messages for uid %s: %s", uid, e)
+        return error_response("Error saving messages", 400)
 
 
 @app.route("/chats/<chat_id>", methods=["DELETE"])
@@ -139,8 +156,12 @@ def delete_chat(uid, chat_id):
         Firebase.delete_chat(uid, chat_id)
         return success_response({'message': 'Message deleted successfully'}, 200)
     except Exception as e:
-        return error_response(f"Error deleting message: {str(e)}", 400)
+        app.logger.error("Error deleting chat for uid %s: %s", uid, e)
+        return error_response("Error deleting message", 400)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    host = os.getenv("FLASK_HOST", "127.0.0.1")
+    port = int(os.getenv("FLASK_PORT", "5000"))
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host=host, port=port, debug=debug_mode)
