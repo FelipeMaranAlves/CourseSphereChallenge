@@ -1,11 +1,13 @@
+import logging
 import os
 from functools import wraps
-from flask import Flask, request, jsonify
+from flask import Flask, g, request, jsonify
 from flask_cors import CORS
 from query_manager import QueryManager
 from firebase import Firebase
 from main import hashFunction
 from blueprints.courses import courses_bp
+from observability import log_event, metrics, register_observability
 from security import (
     apply_security_headers,
     rate_limit,
@@ -29,6 +31,7 @@ allowed_origins = [
 CORS(app, resources={r"/*": {"origins": allowed_origins}})
 
 app.register_blueprint(courses_bp)
+logger = register_observability(app)
 
 success_response = lambda data, code: (jsonify(data), code)
 error_response = lambda error, code: (jsonify({'error': error}), code)
@@ -53,15 +56,41 @@ def require_auth(f):
     def decorated(*args, **kwargs):
         id_token = extract_bearer_token()
         if not id_token:
+            metrics.record_auth_failure("missing_token")
+            log_event(
+                logger,
+                logging.WARNING,
+                "auth_failure",
+                "Missing or malformed Authorization Bearer token",
+                path=request.path,
+                method=request.method,
+            )
             return error_response("Missing or malformed Authorization Bearer token", 401)
         try:
             decoded = Firebase.verify_id_token(id_token)
             uid = decoded.get("uid") if isinstance(decoded, dict) else None
             if not uid:
+                metrics.record_auth_failure("missing_uid")
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "auth_failure",
+                    "Decoded token missing uid claim",
+                    path=request.path,
+                )
                 return error_response("Invalid authentication token", 401)
         except Exception as exc:
-            app.logger.warning("Token verification failed: %s", exc)
+            metrics.record_auth_failure("invalid_token")
+            log_event(
+                logger,
+                logging.WARNING,
+                "auth_failure",
+                "Token verification failed",
+                path=request.path,
+                reason=str(exc),
+            )
             return error_response("Invalid or expired authentication token", 401)
+        g.user_uid = uid
         return f(uid, *args, **kwargs)
     return decorated
 
@@ -78,9 +107,11 @@ def create_user():
     if validation_err:
         return error_response(validation_err, 400)
     try:
-        return success_response(Firebase.create_user(email, password), 200)
+        result = Firebase.create_user(email, password)
+        log_event(logger, logging.INFO, "user_created", "New user account created", email=email)
+        return success_response(result, 200)
     except Exception as e:
-        app.logger.error("Error creating user: %s", e)
+        log_event(logger, logging.ERROR, "user_create_error", "Error creating user", error=str(e))
         return error_response("Error creating user", 400)
 
 
@@ -107,7 +138,7 @@ def set_user_info(uid):
         Firebase.set_user_info(uid, user_info)
         return success_response({"message": "User info set successfully", "uid": uid}, 200)
     except Exception as e:
-        app.logger.error("Error setting user info for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "user_info_update_error", "Error setting user info", uid=uid, error=str(e))
         return error_response("Error setting user info", 400)
 
 
@@ -119,7 +150,7 @@ def get_user_info(uid):
         user_info = Firebase.get_user_info(uid)
         return success_response(user_info, 200)
     except Exception as e:
-        app.logger.error("Error getting user info for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "user_info_fetch_error", "Error getting user info", uid=uid, error=str(e))
         return error_response("Error getting user info", 400)
 
 
@@ -142,7 +173,7 @@ def get_user_query(uid):
         user_info = Firebase.get_user_info(uid)
         return success_response(QueryManager(clean_query, user_info).response, 200)
     except Exception as e:
-        app.logger.error("Error generating query response for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "query_processing_error", "Error generating query response", uid=uid, error=str(e))
         return error_response("Error generating query response", 400)
 
 
@@ -157,7 +188,7 @@ def generate_message_id(uid):
         message_id = hashFunction(data)
         return jsonify({'messageID': message_id}), 200
     except Exception as e:
-        app.logger.error("Error generating hash for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "hash_error", "Error generating hash", uid=uid, error=str(e))
         return error_response("Internal server error generating message ID", 500)
 
 
@@ -177,7 +208,7 @@ def save_chat(uid, chat_id):
         Firebase.save_chat(uid, chat_id, messages)
         return jsonify({'message': 'Messages saved successfully'}), 200
     except Exception as e:
-        app.logger.error("Error saving messages for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "chat_save_error", "Error saving messages", uid=uid, error=str(e))
         return error_response("Error saving messages", 400)
 
 
@@ -191,7 +222,7 @@ def delete_chat(uid, chat_id):
         Firebase.delete_chat(uid, chat_id)
         return success_response({'message': 'Message deleted successfully'}, 200)
     except Exception as e:
-        app.logger.error("Error deleting chat for uid %s: %s", uid, e)
+        log_event(logger, logging.ERROR, "chat_delete_error", "Error deleting chat", uid=uid, error=str(e))
         return error_response("Error deleting message", 400)
 
 
