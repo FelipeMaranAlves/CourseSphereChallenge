@@ -8,7 +8,8 @@ Esta pasta reúne todas as evidências coletadas durante a fase de **Análise de
 
 | Arquivo | Ferramenta / Tipo | Escopo | Resumo dos Achados |
 | :--- | :--- | :--- | :--- |
-| [`bandit.txt`](./bandit.txt) | **Bandit (SAST Python)** | `backend/` | **20 problemas identificados** (1 High, 15 Medium, 4 Low): SQL Injection (`B608`), Flask `debug=True` (`B201`), PRNG inseguro (`B311`) e uso de `assert` (`B101`). |
+| [`bandit.txt`](./bandit.txt) | **Bandit (SAST Python — Baseline)** | `backend/` | **20 problemas identificados** (1 High, 15 Medium, 4 Low): SQL Injection (`B608`), Flask `debug=True` (`B201`), PRNG inseguro (`B311`) e uso de `assert` (`B101`). |
+| [`bandit-pos-correcao.txt`](./bandit-pos-correcao.txt) | **Bandit (SAST Python — Pós-Correção)** | `backend/` | **0 problemas identificados (`No issues identified`)** em 1.137 linhas de código após as correções da Fase 2. |
 | [`eslint-security.txt`](./eslint-security.txt) | **ESLint Security (SAST TS/React)** | `frontend/src/` | **26 problemas identificados**: `security/detect-object-injection` em `CardDeck.tsx:31`, tipagem insegura (`Function` / `any`) e variáveis não utilizadas. |
 | [`npm-audit`](./npm-audit) | **npm audit (SCA Frontend)** | `frontend/package-lock.json` | **39 vulnerabilidades** em dependências (2 Critical, 19 High, 17 Moderate, 1 Low), incluindo `protobufjs`, `websocket-driver`, `@remix-run/router`, `vite`/`esbuild` e `rollup`. |
 | [`pip-audit`](./pip-audit) | **pip-audit (SCA Backend)** | Ambiente Python | **12 vulnerabilidades conhecidas** identificadas na versão do gerenciador `pip`. |
