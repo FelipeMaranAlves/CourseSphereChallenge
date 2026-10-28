@@ -1,1 +1,1 @@
-exclude_dirs: ['ambiente']
+exclude_dirs: ['ambiente', 'venv', '.venv', 'cornell-course-sphere-data']
